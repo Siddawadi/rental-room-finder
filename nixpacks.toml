@@ -1,5 +1,5 @@
 [phases.setup]
-aptPkgs = ["php8.4-mysql", "php8.4-pdo"]
+aptPkgs = ["php8.4-mysql"]
 
 [start]
 cmd = "php -S 0.0.0.0:$PORT"

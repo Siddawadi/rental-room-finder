@@ -2,14 +2,5 @@
   "$schema": "https://railway.com/railway.schema.json",
   "deploy": {
     "startCommand": "php -S 0.0.0.0:$PORT"
-  },
-  "build": {
-    "nixpacksPlan": {
-      "phases": {
-        "setup": {
-          "nixPkgs": ["php84", "php84Extensions.pdo", "php84Extensions.pdo_mysql"]
-        }
-      }
-    }
   }
 }

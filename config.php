@@ -9,11 +9,11 @@ if (session_status() === PHP_SESSION_NONE) {
     ]);
 }
 
-// Database settings
-define('DB_HOST', 'localhost');
-define('DB_NAME', 'myapp');
+define('DB_HOST', 'mysql.railway.internal');
+define('DB_NAME', 'railway');
 define('DB_USER', 'root');
-define('DB_PASS', '');
+define('DB_PASS', 'pRKGSAAUHSPhoOHVnPCDjQFxmfbLSZMt');
+define('DB_PORT', '3306');
 
 $options = [        
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
@@ -23,7 +23,7 @@ $options = [
 
 try {
     $pdo = new PDO(
-        "mysql:host=" . DB_HOST . ";dbname=" . DB_NAME . ";charset=utf8mb4",
+        "mysql:host=" . DB_HOST . ";port=" . DB_PORT . ";dbname=" . DB_NAME . ";charset=utf8mb4",
         DB_USER,
         DB_PASS,
         $options

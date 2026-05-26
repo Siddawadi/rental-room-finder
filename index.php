@@ -28,7 +28,7 @@ if (isset($_POST['login'])) {
         if ($user && password_verify($password, $user['password'])) {
             
             $_SESSION['user_id'] = $user['id'];
-            $_SESSION['username'] = $user['username'];
+            $_SESSION['username'] = $user['name'];
             $_SESSION['email'] = $user['email'];
             $_SESSION['role'] = $user['role'];
             $_SESSION['is_paid'] = $user['is_paid']; 

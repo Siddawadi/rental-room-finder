@@ -27,14 +27,7 @@ $userStmt->execute([$current_user_id]);
 $user = $userStmt->fetch();
 $is_paid = $user['is_paid'] ?? 0;
 
-
-if (isset($_POST['simulate_pay'])) {
-    $stmt = $pdo->prepare("UPDATE users SET is_paid = 1 WHERE id = ?");
-    $stmt->execute([$current_user_id]);
-    $_SESSION['is_paid'] = 1;
-    $is_paid = 1;
-    $payment_success = true;
-}
+$payment_status = $_GET['payment'] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -122,15 +115,15 @@ ul.facilities li { background:#f0f8ff; padding:8px 12px; margin-bottom:5px; bord
         <?php if($is_paid): ?>
             <p><strong>Name:</strong> <?= htmlspecialchars($room['owner_name'] ?? '') ?></p>
             <p><strong>Phone:</strong> <?= htmlspecialchars($room['owner_phone'] ?? '') ?></p>
+            <?php if($payment_status === 'success'): ?>
+                <div style="color:green;">Payment successful! Owner details and location unlocked.</div>
+            <?php endif; ?>
         <?php else: ?>
             <p>Owner details are locked for unpaid users.</p>
-            <?php if(!empty($payment_success)): ?>
-                <div style="color:green;">Payment simulated successfully! You can now see owner details.</div>
-            <?php else: ?>
-                <form method="POST">
-                    <button type="submit" name="simulate_pay" class="button">Pay Rs 1 to Unlock Owner & Location (Simulated)</button>
-                </form>
+            <?php if($payment_status === 'failed'): ?>
+                <div style="color:red;">Payment failed or was cancelled. Please try again.</div>
             <?php endif; ?>
+            <a href="khalti_initiate.php?room_id=<?= $room_id ?>" class="button">Pay Rs <?= UNLOCK_FEE_NPR ?> to Unlock Owner & Location (Khalti)</a>
         <?php endif; ?>
     </div>
 

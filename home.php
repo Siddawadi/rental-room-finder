@@ -7,6 +7,18 @@ $user_id = $_SESSION['user_id'] ?? null;
 $user_name = $_SESSION['username'] ?? 'Guest';
 $isPaidUser = $_SESSION['is_paid'] ?? 0;
 
+// Get complete user details including owner status
+$userDetails = [];
+if ($user_id) {
+    $userStmt = $pdo->prepare("SELECT * FROM users WHERE id = ?");
+    $userStmt->execute([$user_id]);
+    $userDetails = $userStmt->fetch(PDO::FETCH_ASSOC);
+}
+
+$is_owner = $userDetails['is_owner'] ?? 0;
+$owner_paid = $userDetails['owner_paid'] ?? 0;
+$is_admin = $userDetails['is_admin'] ?? 0;
+
 // Handle notifications
 $notifications = [];
 if ($user_id) {
@@ -38,6 +50,9 @@ if ($user_id) {
     $reqStmt->execute([$user_id]);
     $visitRequests = $reqStmt->fetchAll(PDO::FETCH_ASSOC);
 }
+
+// Check owner status from session/URL
+$owner_status = $_GET['owner'] ?? '';
 
 $alreadyConfirmed = false;
 $confirmedRoomId = null;
@@ -120,6 +135,14 @@ try {
 $totalStmt = $pdo->query("SELECT COUNT(*) FROM rooms");
 $totalRooms = $totalStmt->fetchColumn();
 $totalPages = ceil($totalRooms / $perPage);
+
+// Get owner's rooms count
+$ownerRoomCount = 0;
+if ($user_id && $is_owner && $owner_paid) {
+    $countStmt = $pdo->prepare("SELECT COUNT(*) FROM rooms WHERE owner_id = ?");
+    $countStmt->execute([$user_id]);
+    $ownerRoomCount = $countStmt->fetchColumn();
+}
 ?>
 
 <!DOCTYPE html>
@@ -190,6 +213,14 @@ nav a.logout {
     font-weight: 600;
 }
 nav a.logout:hover { background: #3b99e0; color:#fff; }
+nav a.owner-badge {
+    background: #28a745;
+    color: #fff;
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
 
 /* ── HERO ── */
 .hero {
@@ -243,6 +274,70 @@ nav a.logout:hover { background: #3b99e0; color:#fff; }
 /* ── CONTAINER ── */
 .container { max-width: 1200px; margin: 50px auto; padding: 0 20px; }
 h2.section-title { text-align: center; margin-bottom: 40px; font-size: 2rem; color: #2c3e50; }
+
+/* ── OWNER DASHBOARD ── */
+.owner-dashboard {
+    background: white;
+    border-radius: 12px;
+    padding: 25px;
+    margin-bottom: 40px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    border-left: 4px solid #28a745;
+}
+.owner-dashboard h3 {
+    color: #2c3e50;
+    margin-bottom: 15px;
+    font-size: 1.3rem;
+}
+.owner-dashboard .stats {
+    display: flex;
+    gap: 30px;
+    flex-wrap: wrap;
+    margin: 15px 0;
+}
+.owner-dashboard .stat {
+    background: #f8f9fa;
+    padding: 10px 20px;
+    border-radius: 8px;
+}
+.owner-dashboard .stat strong {
+    font-size: 1.2rem;
+    color: #28a745;
+}
+.owner-actions {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-top: 15px;
+}
+.owner-actions .btn {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 6px;
+    text-decoration: none;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.2s;
+    display: inline-block;
+}
+.btn-primary { background: #007bff; color: white; }
+.btn-primary:hover { background: #0069d9; }
+.btn-success { background: #28a745; color: white; }
+.btn-success:hover { background: #218838; }
+.btn-warning { background: #ffc107; color: #333; }
+.btn-warning:hover { background: #e0a800; }
+.btn-secondary { background: #6c757d; color: white; }
+.btn-secondary:hover { background: #5a6268; }
+
+.alert {
+    padding: 15px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+}
+.alert-info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
+.alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+.alert-warning { background: #fff3cd; color: #856404; border: 1px solid #ffeeba; }
+.alert-danger { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
 
 /* ── GRID ── */
 .grid {
@@ -324,7 +419,6 @@ footer { text-align: center; margin: 60px 0 20px; color: #777; font-size: 0.9rem
     header { padding: 12px 16px; }
     header h1 { font-size: 1.1rem; }
 
-    /* Show hamburger, hide nav by default */
     .hamburger { display: flex; }
 
     nav {
@@ -357,16 +451,13 @@ footer { text-align: center; margin: 60px 0 20px; color: #777; font-size: 0.9rem
     .container { margin: 30px auto; padding: 0 12px; }
     h2.section-title { font-size: 1.5rem; margin-bottom: 25px; }
 
-    /* Grid: 1 column on mobile */
     .grid { grid-template-columns: 1fr; gap: 20px; }
 
-    /* Cards */
     .card img { height: 180px; }
     .card-content { padding: 14px; }
     .card-content h3 { font-size: 1rem; }
     .card-content p { font-size: 0.875rem; }
 
-    /* Buttons full width on mobile */
     .card-buttons { flex-direction: column; }
     .card-content a,
     .card-content button,
@@ -376,11 +467,14 @@ footer { text-align: center; margin: 60px 0 20px; color: #777; font-size: 0.9rem
         text-align: center;
     }
 
-    /* Pagination */
     .pagination a { padding: 7px 10px; font-size: 0.875rem; }
+    
+    .owner-dashboard .stats {
+        flex-direction: column;
+        gap: 10px;
+    }
 }
 
-/* ── Very small (max 400px) ── */
 @media (max-width: 400px) {
     header h1 { font-size: 1rem; }
     .hero { height: 240px; }
@@ -396,7 +490,6 @@ footer { text-align: center; margin: 60px 0 20px; color: #777; font-size: 0.9rem
 <header>
     <h1>Room Finder Nepal</h1>
 
-    <!-- Hamburger button -->
     <button class="hamburger" id="hamburger" aria-label="Toggle menu">
         <span></span>
         <span></span>
@@ -405,13 +498,20 @@ footer { text-align: center; margin: 60px 0 20px; color: #777; font-size: 0.9rem
 
     <nav id="main-nav">
         <span><?= $user_id ? htmlspecialchars($user_name) : 'Welcome!' ?></span>
+        <?php if ($is_owner && $owner_paid): ?>
+            <span class="owner-badge">🏠 Owner</span>
+        <?php endif; ?>
         <a href="home.php">Home</a>
         <a href="home.php#rooms">Browse Rooms</a>
         <?php if ($user_id): ?>
+            <?php if ($is_owner && $owner_paid): ?>
+    <a href="add_room_owner.php" style="color: #28a745; font-weight: 600;">➕ List Room</a>
+    <a href="my_rooms.php">📋 My Rooms</a>
+<?php endif; ?>
             <a href="profile.php">My Profile</a>
             <a href="edit_profile.php">Edit Profile</a>
-            <a href="home.php?favourites=1">Favourite Rooms</a>
-            <a href="visit_requests.php">See Requests</a>
+            <a href="home.php?favourites=1">❤️ Favourites</a>
+            <a href="visit_requests.php">📅 Visit Requests</a>
             <a href="logout.php" class="logout">Logout</a>
         <?php else: ?>
             <a href="index.php" class="logout">Login/Register</a>
@@ -438,6 +538,75 @@ footer { text-align: center; margin: 60px 0 20px; color: #777; font-size: 0.9rem
                     <?= htmlspecialchars($note['message']) ?>
                 </div>
             <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
+
+    <!-- OWNER DASHBOARD -->
+    <?php if ($user_id): ?>
+        <div class="owner-dashboard">
+            <h3>🏠 Owner Dashboard</h3>
+            
+            <?php if ($owner_status === 'success'): ?>
+                <div class="alert alert-success">
+                    ✅ <strong>Payment Successful!</strong> You are now a verified owner!
+                </div>
+            <?php elseif ($owner_status === 'failed'): ?>
+                <div class="alert alert-danger">
+                    ❌ <strong>Payment Failed!</strong> Please try again.
+                </div>
+            <?php elseif ($owner_status === 'already_completed'): ?>
+                <div class="alert alert-info">
+                    ℹ️ You are already a verified owner.
+                </div>
+            <?php endif; ?>
+            
+            <?php if (!$is_owner): ?>
+                <!-- Not an owner yet -->
+                <div class="alert alert-info">
+                    <strong>🏠 Become a Property Owner!</strong>
+                    <p>Pay Rs. <?php echo OWNER_FEE_NPR; ?> to list your properties on our platform.</p>
+                    <a href="initiate_owner_payment.php" class="btn btn-success" style="margin-top: 10px;">
+                        💳 Pay Rs. <?php echo OWNER_FEE_NPR; ?> to Become Owner
+                    </a>
+                </div>
+                
+            <?php elseif ($is_owner && !$owner_paid): ?>
+                <!-- Owner but payment pending -->
+                <div class="alert alert-warning">
+                    <strong>⏳ Owner Verification Pending</strong>
+                    <p>Your payment to become an owner is being processed.</p>
+                    <a href="initiate_owner_payment.php" class="btn btn-warning" style="margin-top: 10px;">
+                        💳 Complete Payment
+                    </a>
+                </div>
+                
+            <?php elseif ($is_owner && $owner_paid): ?>
+                <!-- Verified Owner -->
+                <div class="alert alert-success">
+                    <strong>✅ You are a Verified Owner!</strong>
+                    <p>You can now list and manage your properties.</p>
+                </div>
+                
+                <div class="stats">
+                    <div class="stat">
+                        <strong><?= $ownerRoomCount ?></strong> Rooms Listed
+                    </div>
+                    <div class="stat">
+                        <strong>0</strong> Active Bookings
+                    </div>
+                    <div class="stat">
+                        <strong>0</strong> Visit Requests
+                    </div>
+                </div>
+                
+              <!-- In the owner actions section -->
+
+<div class="owner-actions">
+    <a href="add_room_owner.php" class="btn btn-primary">➕ Add New Room</a>
+    <a href="my_rooms.php" class="btn btn-secondary">📋 My Rooms</a>
+    <a href="manage_visit_requests.php" class="btn btn-warning">📅 Visit Requests</a>
+</div>
+            <?php endif; ?>
         </div>
     <?php endif; ?>
 
@@ -617,5 +786,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-</body>
-</html>
+</body> </html>
